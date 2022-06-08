@@ -95,56 +95,11 @@ rm ${VITESS?}/{sqltypes,bytes2,hack}/*.patch ${VITESS?}/*.patch
 TODO: Change these instructions to use git to copy the files, that'll make later patching easier.
 
 ```bash
-VITESS=${REPOBASE?}/github.com/vitessio/vitess/go/
-XQBUMU=${REPOBASE?}/github.com/xqbumu/sqlparser/
-
-cd ${XQBUMU?}
-
-# Copy all the code
-cp -pr ${VITESS?}/vt/sqlparser/ .
-cp -pr ${VITESS?}/sqltypes dependency
-cp -pr ${VITESS?}/bytes2 dependency
-cp -pr ${VITESS?}/hack dependency
-
-# Delete some code we haven't ported
-rm dependency/sqltypes/arithmetic.go dependency/sqltypes/arithmetic_test.go dependency/sqltypes/event_token.go dependency/sqltypes/event_token_test.go dependency/sqltypes/proto3.go dependency/sqltypes/proto3_test.go dependency/sqltypes/query_response.go dependency/sqltypes/result.go dependency/sqltypes/result_test.go
-
-# Some automated fixes
-
-# Fix imports
-sed -i '.bak' 's_vitess.io/vitess/go/vt/proto/query_github.com/xqbumu/sqlparser/dependency/querypb_g' *.go dependency/sqltypes/*.go
-sed -i '.bak' 's_vitess.io/vitess/go/_github.com/xqbumu/sqlparser/dependency/_g' *.go dependency/sqltypes/*.go
-
-# Copy the proto, but basically drop everything we don't want
-cp -pr ${VITESS?}/vt/proto/query dependency/querypb
-
-sed -i '.bak' 's_.*Descriptor.*__g' dependency/querypb/*.go
-sed -i '.bak' 's_.*ProtoMessage.*__g' dependency/querypb/*.go
-
-sed -i '.bak' 's/proto.CompactTextString(m)/"TODO"/g' dependency/querypb/*.go
-sed -i '.bak' 's/proto.EnumName/EnumName/g' dependency/querypb/*.go
-
-sed -i '.bak' 's/proto.Equal/reflect.DeepEqual/g' dependency/sqltypes/*.go
-
-# Remove the error library
-sed -i '.bak' 's/vterrors.Errorf([^,]*, /fmt.Errorf(/g' *.go dependency/sqltypes/*.go
-sed -i '.bak' 's/vterrors.New([^,]*, /errors.New(/g' *.go dependency/sqltypes/*.go
+./tools.sh install
 ```
 
 ### Testing
 
 ```bash
-VITESS=${REPOBASE?}/github.com/vitessio/vitess/go/
-XQBUMU=${REPOBASE?}/github.com/xqbumu/sqlparser/
-
-cd ${XQBUMU?}
-
-# Test, fix and repeat
-go test ./...
-
-# Finally make some diffs (for later reference)
-diff -u ${VITESS?}/sqltypes/        ${XQBUMU?}/dependency/sqltypes/ > ${XQBUMU?}/patches/sqltypes.patch
-diff -u ${VITESS?}/bytes2/          ${XQBUMU?}/dependency/bytes2/   > ${XQBUMU?}/patches/bytes2.patch
-diff -u ${VITESS?}/vt/proto/query/  ${XQBUMU?}/dependency/querypb/  > ${XQBUMU?}/patches/querypb.patch
-diff -u ${VITESS?}/vt/sqlparser/    ${XQBUMU?}/                     > ${XQBUMU?}/patches/sqlparser.patch
+./tools.sh testing
 ```
