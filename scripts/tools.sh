@@ -1,10 +1,12 @@
 #!/bin/env bash
 
+shopt -s nullglob
+
 REPOBASE=/workspaces
 
-VITESS=${REPOBASE?}/src/github.com/vitessio/vitess/
-VITESSGO=${REPOBASE?}/src/github.com/vitessio/vitess/go/
-MYREPO=${REPOBASE?}/sqlparser/
+VITESS=${REPOBASE?}/src/github.com/vitessio/vitess
+VITESSGO=${REPOBASE?}/src/github.com/vitessio/vitess/go
+MYREPO=${REPOBASE?}/sqlparser
 
 install() {
   if [ -d "${VITESS}" ]; then
@@ -56,7 +58,7 @@ install() {
   sed -i 's_vitess.io/vitess/go/vt/sysvars_github.com/xqbumu/sqlparser/dependency/sysvars_g' *.go dependency/{sqltypes,querypb}/*.go
   sed -i 's_vitess.io/vitess/go/vt/vterrors_github.com/xqbumu/sqlparser/dependency/vterrors_g' *.go dependency/{sqltypes,querypb}/*.go
   sed -i 's_vitess.io/vitess/go/vt/servenv_github.com/xqbumu/sqlparser/dependency/servenv_g' *.go dependency/{sqltypes,querypb}/*.go
-  sed -i 's_vitess.io/vitess/go/test_github.com/xqbumu/sqlparser/test/_g' *.go dependency/{sqltypes,querypb,topodatapb}/*.go
+  sed -i 's_vitess.io/vitess/go/test/_github.com/xqbumu/sqlparser/test/_g' *.go dependency/{sqltypes,querypb,topodatapb}/*.go
   sed -i 's_vitess.io/vitess/go/_github.com/xqbumu/sqlparser/dependency/_g' *.go dependency/{sqltypes,querypb,topodatapb}/*.go
 
   # # basically drop everything we don't want
@@ -72,8 +74,37 @@ install() {
   # sed -i 's/vterrors.Errorf([^,]*, /fmt.Errorf(/g' *.go dependency/sqltypes/*.go
   # sed -i 's/vterrors.New([^,]*, /errors.New(/g' *.go dependency/sqltypes/*.go
 
+  go mod tidy
   popd
 
+}
+
+fetch() {
+  # Create patches for everything that changed
+  LASTIMPORT=$1
+  # for path in ${VITESS?}/{vt/sqlparser,sqltypes,bytes2,hack}; do
+  #   cd ${path}
+  #   git format-patch ${LASTIMPORT?} .
+  # done
+
+  # # Apply patches to the dependencies
+  # cd ${MYREPO?}
+  # git am --directory dependency -p2 ${VITESS?}/{sqltypes,bytes2,hack}/*.patch
+
+  # # Apply the main patches to the repo
+  # cd ${MYREPO?}
+  # git am -p4 ${VITESS?}/vt/sqlparser/*.patch
+
+  # # If you encounter diff failures, manually fix them with
+  # patch -p4 <.git/rebase-apply/patch
+  # ...
+  # git add name_of_files
+  # git am --continue
+
+  # # Cleanup
+  # rm ${VITESS?}/{sqltypes,bytes2,hack}/*.patch ${VITESS?}/*.patch
+
+  # # and Finally update the LASTIMPORT in this README.
 }
 
 testing() {
@@ -81,10 +112,13 @@ testing() {
   go test ./...
 
   # Finally make some diffs (for later reference)
-  diff -u ${VITESS?}/sqltypes/ ${XQBUMU?}/dependency/sqltypes/ >${XQBUMU?}/patches/sqltypes.patch
-  diff -u ${VITESS?}/bytes2/ ${XQBUMU?}/dependency/bytes2/ >${XQBUMU?}/patches/bytes2.patch
-  diff -u ${VITESS?}/vt/proto/query/ ${XQBUMU?}/dependency/querypb/ >${XQBUMU?}/patches/querypb.patch
-  diff -u ${VITESS?}/vt/sqlparser/ ${XQBUMU?}/ >${XQBUMU?}/patches/sqlparser.patch
+  if [ ! -d ./patches ]; then
+    mkdir -p ./patches
+  fi
+  diff -u ${VITESSGO?}/sqltypes/ ${MYREPO?}/dependency/sqltypes/ >${MYREPO?}/patches/sqltypes.patch
+  diff -u ${VITESSGO?}/bytes2/ ${MYREPO?}/dependency/bytes2/ >${MYREPO?}/patches/bytes2.patch
+  diff -u ${VITESSGO?}/vt/proto/query/ ${MYREPO?}/dependency/querypb/ >${MYREPO?}/patches/querypb.patch
+  diff -u ${VITESSGO?}/vt/sqlparser/ ${MYREPO?}/ >${MYREPO?}/patches/sqlparser.patch
   popd
 }
 
@@ -98,13 +132,19 @@ clean() {
 
 action=$1
 if [ -z $action ]; then
-  echo 'avaliable action: install, clean'
+  echo 'avaliable action:'
+  echo ' install'
+  echo ' fetch <commit>'
+  echo ' testing'
+  echo ' clean'
   exit 0
 fi
 
 if [ $action == "install" ]; then
   clean
   install
+elif [ $action == 'fetch' ]; then
+  fetch $2
 elif [ $action == 'testing' ]; then
   testing
 elif [ $action == 'clean' ]; then
