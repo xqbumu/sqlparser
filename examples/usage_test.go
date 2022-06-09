@@ -8,7 +8,7 @@ import (
 	"github.com/xqbumu/sqlparser"
 )
 
-func TestParseString(t *testing.T) {
+func TestUsageString(t *testing.T) {
 	sql := "SELECT * FROM `table` WHERE a = 'abc'"
 	stmt, err := sqlparser.Parse(sql)
 	if err != nil {
@@ -24,7 +24,7 @@ func TestParseString(t *testing.T) {
 	}
 }
 
-func TestParseReader(t *testing.T) {
+func TestUsageReader(t *testing.T) {
 	s := "INSERT INTO table1 VALUES (1, 'a'); INSERT INTO table2 VALUES (3, 4);"
 
 	tokens := sqlparser.NewStringTokenizer(s)
